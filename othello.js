@@ -56,20 +56,20 @@ Othello.prototype.cell_index = function (x, y) {
 };
 
 Othello.prototype.init = function () {
-    this.cell_put(this.board, this.BLACK, 3, 4);
-    this.cell_put(this.board, this.BLACK, 4, 3);
-    this.cell_put(this.board, this.WHITE, 3, 3);
-    this.cell_put(this.board, this.WHITE, 4, 4);
+    this.cell_put(this.board[this.BLACK], this.board[this.WHITE], 4 * 8 + 3);
+    this.cell_put(this.board[this.BLACK], this.board[this.WHITE], 3 * 8 + 4);
+    this.cell_put(this.board[this.WHITE], this.board[this.BLACK], 3 * 8 + 3);
+    this.cell_put(this.board[this.WHITE], this.board[this.BLACK], 4 * 8 + 4);
 };
 
-Othello.prototype.cell_put = function (board, color, x, y) {
-    let idx = this.cell_index(x, y);
-    board[color][idx[0]] |= 1 << idx[1];
-    let ret = this.flip(board[color], board[1 ^ color], x, y);
-    board[0][0] ^= ret[0];
-    board[0][1] ^= ret[1];
-    board[1][0] ^= ret[0];
-    board[1][1] ^= ret[1];
+Othello.prototype.cell_put = function (user, enemy, bit) {
+    if (bit >= 32) user[1] |= 1 << (bit - 32);
+    else user[0] |= 1 << bit;
+    let ret = this.flip(user, enemy, bit);
+    user[0] ^= ret[0];
+    user[1] ^= ret[1];
+    enemy[0] ^= ret[0];
+    enemy[1] ^= ret[1];
 };
 
 /* 描画 */
@@ -131,7 +131,6 @@ Othello.prototype.paint = function () {
     }
 };
 
-/* 有効手に 1 を立てる */
 Othello.prototype.make_mobility = function (p, o) {
     let p1 = p[1], p0 = p[0];
     let r1 = 0, r0 = 0;
@@ -244,9 +243,7 @@ Othello.prototype.make_mobility = function (p, o) {
     return [r0 & ~(p[0] | o[0]), r1 & ~(p[1] | o[1])];
 };
 
-
-Othello.prototype.flip = function (p, o, x, y) {
-    let bit = y * 8 + x;
+Othello.prototype.flip = function (p, o, bit) {
     if (bit >= 32) return this.flip_top(p, o, bit - 32);
     return this.flip_bottom(p, o, bit);
 };
@@ -411,17 +408,18 @@ Othello.prototype.touch = function (x, y) {
     this.ableclick = false;
     this.message.text("(" + x + " ," + y + ")");
 
-    const self = this;
     this.accent = y * 8 + x;
     this.paint();
     this.accent = -1;
+
+    this.cell_put(this.board[this.user], this.board[this.user ^ 1], y * 8 + x);
+
+    const self = this;
     setTimeout(function () {
-        self.cell_put(self.board, self.user, x, y);
-        setTimeout(function () {
-            self.change_turn();
-            self.paint();
-        }, 200);
-    }, 100);
+        self.change_turn();
+        self.paint();
+    }, 300);
+
 };
 
 Othello.prototype.change_turn = function () {
@@ -472,32 +470,100 @@ Othello.prototype.pop_count = function (x1, x0) {
 };
 
 Othello.prototype.play_ai = function () {
-
-    this.full_search();
-
-    const mob = this.make_mobility(this.board[this.user], this.board[1 ^ this.user]);
-    let think = [];
-    for (let i = 0; i < 8; i++) {
-        for (let j = 0; j < 8; j++) {
-            let idx = this.cell_index(j, i);
-            if ((mob[idx[0]] >> idx[1]) & 1) think.push([j, i]);
-        }
-    }
-    const poyo = Math.floor(Math.random() * think.length);
-    this.touch(think[poyo][0], think[poyo][1]);
+    const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 7, -114514, 114514);
+    this.touch(pos[1] % 8, pos[1] / 8 | 0);
 };
 
-/* 全部探します */
+Othello.prototype.evalute = function (user, enemy) {
+    const evaluateTable = [
+        [30, -5, 0, -1, -1, 0, -5, 30,
+            -5, -15, -3, -3, -3, -3, -15, -5,
+            0, -3, 0, -1, -1, 0, -3, 0,
+            -1, -3, -1, -1, -1, -1, -3, -1],
+        [-1, -3, -1, -1, -1, -1, -3, -1,
+            0, -3, 0, -1, -1, 0, -3, 0,
+            -5, -15, -3, -3, -3, -3, -15, -5,
+            30, -5, 0, -1, -1, 0, -5, 30]
+    ];
+    let value = 0;
+    for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 32; j++) {
+            if ((user[i] >>> j) & 1) value += evaluateTable[i][j];
+            else if ((enemy[i] >>> j) & 1) value -= evaluateTable[i][j];
+        }
+    }
+    return value;
+};
+
+
+Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta) {
+    if (depth === 0) {
+        return [this.evalute(user, enemy), null, null];
+    }
+
+    const mob = this.make_mobility(user, enemy);
+    let think = [];
+    for (let i = 0; i < 2; i++) {
+        for(let j = 0; j < 32; j++) {
+            if((mob[i] >>> j) & 1) {
+                think.push(i * 32 + j);
+            }
+        }
+    }
+
+    if (think.length === 0) {
+        const ret = this.nega_max_search(enemy, user, depth - 1, -beta, -alpha);
+        return [-ret[0], null];
+    }
+
+    let best = alpha, best_idx = -1;
+    for(let i = 0; i < think.length; i++) {
+        let nxt_user = [user[0], user[1]];
+        let nxt_enemy = [enemy[0], enemy[1]];
+        this.cell_put(nxt_user, nxt_enemy, think[i]);
+        const ret = -(this.nega_max_search(nxt_enemy, nxt_user, depth - 1, -beta, -Math.max(alpha, best))[0]);
+        if(best < ret || best_idx === -1) {
+            best = ret;
+            best_idx = think[i];
+        }
+        if(best >= beta) {
+            break;
+        }
+    }
+
+    return [best, best_idx];
+};
+
 Othello.prototype.full_search = function () {
-    let que = Array();
-    que.push([[this.board[this.user][0], this.board[this.user][1]],
-        [this.board[1 ^ this.user][0], this.board[1 ^ this.user][1]]]);
+    let que = [];
+    que.push({
+        user: 0,
+        board: [[this.board[this.user][0], this.board[this.user][1]],
+            [this.board[1 ^ this.user][0], this.board[1 ^ this.user][1]]]
+    });
+    que.push({
+        user: 0,
+        board: [[this.board[this.user][0], this.board[this.user][1]],
+            [this.board[1 ^ this.user][0], this.board[1 ^ this.user][1]]]
+    });
     while (que.length > 0) {
         let next_que = [];
         for (let i = 0; i < que.length; i++) {
-            let state = que[i];
-            console.log(state);
+            const state = que[i];
+            let mob = this.make_mobility(state.board[state.user], state.board[state.user ^ 1]);
+            for (let j = 0; j < 2; j++) {
+                for (let k = 0; k < 32; k++) {
+                    if ((mob[j] >>> k) & 1) {
+                        let nxt = this.flip(state.board[state.user], state.board[state.user ^ 1], j * 32 + k);
+                        next_que.push({
+                            user: state.user ^ 1,
+                            board: [nxt[0], nxt[1]]
+                        });
+                    }
+                }
+            }
         }
+        console.log("foo");
         que = next_que;
     }
 };

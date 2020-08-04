@@ -473,15 +473,17 @@ Othello.prototype.pop_count = function (x1, x0) {
 
 Othello.prototype.play_ai = function () {
     const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
+
+    this.hand = 0;
     if(cnt >= 51) {
         const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], -114514, 114514, 0);
 
-        if(-pos[0] >= 33) {
-            this.cpumessage.text("黒が " + (-pos[0]) + " 個とりそう... 負けた＞＜");
-        } else if(-pos[0] == 32) {
-            this.cpumessage.text("おーひきわけー");
+        if(pos[0] < 0) {
+            this.cpumessage.text("黒が " + (32 - pos[0] / 2) + " 個とりそう... 負けた＞＜" + " (" + this.hand + "手読んだよ)");
+        } else if(pos[0] == 0) {
+            this.cpumessage.text("おーひきわけー"  + " (" + this.hand + "手読んだよ)" );
         } else {
-            this.cpumessage.text("白が " + (64 + pos[0]) + " 個とりそう... かった!!");
+            this.cpumessage.text("白が " + (32 + pos[0] / 2) + " 個とりそう... かった!!"  + " (" + this.hand + "手読んだよ)" );
         }
 
         this.touch(pos[1] % 8, pos[1] / 8 | 0);
@@ -491,17 +493,17 @@ Othello.prototype.play_ai = function () {
         const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514, 0);
 
         if(pos[0] >= 100) {
-            this.cpumessage.text("かったぜ");
+            this.cpumessage.text("かったぜ"   + " (" + this.hand + "手読んだよ)" );
         } else if(pos[0] >= 50) {
-            this.cpumessage.text("勝てそうかな??");
+            this.cpumessage.text("勝てそうかな??"   + " (" + this.hand + "手読んだよ)" );
         } else if(pos[0] >= -10) {
-            if(cnt <= 15) this.cpumessage.text("まだ序盤だね");
-            else if(cnt <= 30) this.cpumessage.text("中盤かな");
-            else if(cnt <= 40) this.cpumessage.text("！？");
+            if(cnt <= 15) this.cpumessage.text("まだ序盤だね"   + " (" + this.hand + "手読んだよ)" );
+            else if(cnt <= 30) this.cpumessage.text("中盤かな"   + " (" + this.hand + "手読んだよ)" );
+            else if(cnt <= 40) this.cpumessage.text("！？"   + " (" + this.hand + "手読んだよ)" );
         } else if(pos[0] >= -50) {
-            this.cpumessage.text("!?");
+            this.cpumessage.text("!?"   + " (" + this.hand + "手読んだよ)" );
         } else {
-            this.cpumessage.text("まけた><");
+            this.cpumessage.text("まけた><"   + " (" + this.hand + "手読んだよ)" );
         }
 
         this.touch(pos[1] % 8, pos[1] / 8 | 0);
@@ -543,13 +545,14 @@ Othello.prototype.nega_max_search2 = function (user, enemy, alpha, beta, pass) {
 
     if (think.length === 0) {
         if(pass >= 2) {
-            return [this.pop_count(user[0], user[1]), null];
+            return [this.pop_count(user[0], user[1]) - this.pop_count(enemy[0], enemy[1]), null];
         } else {
             const ret = this.nega_max_search2(enemy, user, -beta, -alpha, pass + 1);
             return [-ret[0], null];
         }
     }
 
+    this.hand += think.length;
     let best = alpha, best_idx = -1;
     for(let i = 0; i < think.length; i++) {
         let nxt_user = [user[0], user[1]];
@@ -598,7 +601,6 @@ Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta, p
             }
         }
     }
-
     if (think.length === 0) {
         if(pass >= 2) {
             const sa = this.pop_count(user[0], user[1]) - this.pop_count(enemy[0], enemy[1]);
@@ -610,6 +612,7 @@ Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta, p
         }
     }
 
+    this.hand += think.length;
     let best = alpha, best_idx = -1;
     for(let i = 0; i < think.length; i++) {
         let nxt_user = [user[0], user[1]];

@@ -18,6 +18,8 @@ const Othello = function (container) {
     this.board = [[0, 0], [0, 0]];
 
     this.message = this.container.find("#message");
+    this.cpumessage = this.container.find("#message2");
+
     this.user = this.BLACK;
 
     this.ableclick = false;
@@ -470,8 +472,40 @@ Othello.prototype.pop_count = function (x1, x0) {
 };
 
 Othello.prototype.play_ai = function () {
-    const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514);
-    this.touch(pos[1] % 8, pos[1] / 8 | 0);
+    const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
+    if(cnt >= 51) {
+        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], 15, -114514, 114514);
+
+        if(-pos[0] >= 33) {
+            this.cpumessage.text("黒が " + (-pos[0]) + " 個とりそう... 負けた＞＜");
+        } else if(-pos[0] == 32) {
+            this.cpumessage.text("おーひきわけー");
+        } else {
+            this.cpumessage.text("白が " + (64 + pos[0]) + " 個とりそう... かった!!");
+        }
+
+        this.touch(pos[1] % 8, pos[1] / 8 | 0);
+
+
+    } else {
+        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514);
+
+        if(pos[0] >= 100) {
+            this.cpumessage.text("かったぜ");
+        } else if(pos[0] >= 50) {
+            this.cpumessage.text("勝てそうかな??");
+        } else if(pos[0] >= -10) {
+            if(cnt <= 15) this.cpumessage.text("まだ序盤だね");
+            else if(cnt <= 30) this.cpumessage.text("中盤かな");
+            else if(cnt <= 40) this.cpumessage.text("！？");
+        } else if(pos[0] >= -50) {
+            this.cpumessage.text("!?");
+        } else {
+            this.cpumessage.text("まけた><");
+        }
+
+        this.touch(pos[1] % 8, pos[1] / 8 | 0);
+    }
 };
 
 Othello.prototype.evalute = function (user, enemy) {
@@ -493,6 +527,44 @@ Othello.prototype.evalute = function (user, enemy) {
         }
     }
     return value;
+};
+
+Othello.prototype.nega_max_search2 = function (user, enemy, depth, alpha, beta) {
+    if (depth === 0) {
+        return [this.pop_count(user[0], user[1]), null, null];
+    }
+
+    const mob = this.make_mobility(user, enemy);
+    let think = [];
+    for (let i = 0; i < 2; i++) {
+        for(let j = 0; j < 32; j++) {
+            if((mob[i] >>> j) & 1) {
+                think.push(i * 32 + j);
+            }
+        }
+    }
+
+    if (think.length === 0) {
+        const ret = this.nega_max_search2(enemy, user, depth - 1, -beta, -alpha);
+        return [-ret[0], null];
+    }
+
+    let best = alpha, best_idx = -1;
+    for(let i = 0; i < think.length; i++) {
+        let nxt_user = [user[0], user[1]];
+        let nxt_enemy = [enemy[0], enemy[1]];
+        this.cell_put(nxt_user, nxt_enemy, think[i]);
+        const ret = -(this.nega_max_search2(nxt_enemy, nxt_user, depth - 1, -beta, -Math.max(alpha, best))[0]);
+        if(best < ret || best_idx === -1) {
+            best = ret;
+            best_idx = think[i];
+        }
+        if(best >= beta) {
+            break;
+        }
+    }
+
+    return [best, best_idx];
 };
 
 
@@ -532,40 +604,6 @@ Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta) {
     }
 
     return [best, best_idx];
-};
-
-Othello.prototype.full_search = function () {
-    let que = [];
-    que.push({
-        user: 0,
-        board: [[this.board[this.user][0], this.board[this.user][1]],
-            [this.board[1 ^ this.user][0], this.board[1 ^ this.user][1]]]
-    });
-    que.push({
-        user: 0,
-        board: [[this.board[this.user][0], this.board[this.user][1]],
-            [this.board[1 ^ this.user][0], this.board[1 ^ this.user][1]]]
-    });
-    while (que.length > 0) {
-        let next_que = [];
-        for (let i = 0; i < que.length; i++) {
-            const state = que[i];
-            let mob = this.make_mobility(state.board[state.user], state.board[state.user ^ 1]);
-            for (let j = 0; j < 2; j++) {
-                for (let k = 0; k < 32; k++) {
-                    if ((mob[j] >>> k) & 1) {
-                        let nxt = this.flip(state.board[state.user], state.board[state.user ^ 1], j * 32 + k);
-                        next_que.push({
-                            user: state.user ^ 1,
-                            board: [nxt[0], nxt[1]]
-                        });
-                    }
-                }
-            }
-        }
-        console.log("foo");
-        que = next_que;
-    }
 };
 
 Othello.prototype.end = function () {

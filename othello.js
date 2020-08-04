@@ -113,7 +113,7 @@ Othello.prototype.paint = function () {
                     this.cellwidth * 0.45, 0, Math.PI * 2, true);
                 object.fill();
             }
-            if ((mob[idx[0]] >> idx[1]) & 1) {
+            if (this.user === this.BLACK && (mob[idx[0]] >> idx[1]) & 1) {
                 object.beginPath();
                 object.fillStyle = object.strokeStyle = "#FFFFFF";
                 object.arc(this.cellwidth / 2 + j * this.cellwidth,
@@ -414,13 +414,14 @@ Othello.prototype.touch = function (x, y) {
     this.paint();
     this.accent = -1;
 
-    this.cell_put(this.board[this.user], this.board[this.user ^ 1], y * 8 + x);
-
     const self = this;
-    setTimeout(function () {
-        self.change_turn();
-        self.paint();
-    }, 300);
+    setTimeout(function() {
+        self.cell_put(self.board[self.user], self.board[self.user ^ 1], y * 8 + x);
+        setTimeout(function () {
+            self.paint();
+            self.change_turn();
+        }, 200);
+    }, 100);
 
 };
 
@@ -429,6 +430,7 @@ Othello.prototype.change_turn = function () {
     let mob = this.make_mobility(this.board[this.user], this.board[1 ^ this.user]);
     if (this.user === this.BLACK) {
         if (mob[0] !== 0 || mob[1] !== 0) {
+            this.paint();
             this.ableclick = true;
         } else {
             this.user ^= 1;
@@ -445,10 +447,21 @@ Othello.prototype.change_turn = function () {
         }
     } else {
         if (mob[0] !== 0 || mob[1] !== 0) {
+            this.paint();
+
             const self = this;
+            self.nxt_hand = -1;
+            self.nxt_cpu = "";
+
+
             setTimeout(function () {
-                self.play_ai();
+                self.pend();
             }, 300);
+
+            const res = self.play_ai2();
+            self.nxt_hand = res[0];
+            self.nxt_cpu = res[1];
+
         } else {
             this.user ^= 1;
             mob = this.make_mobility(this.board[this.user], this.board[1 ^ this.user]);
@@ -462,6 +475,18 @@ Othello.prototype.change_turn = function () {
     }
 };
 
+Othello.prototype.pend = function() {
+    const self = this;
+    setTimeout(function() {
+        if(self.nxt_hand !== -1) {
+            self.touch(self.nxt_hand % 8, self.nxt_hand / 8 | 0);
+            self.cpumessage.text(self.nxt_cpu);
+        } else {
+            self.pend();
+        }
+    }, 30);
+};
+
 Othello.prototype.pop_count = function (x1, x0) {
     let t0 = x1 - (x1 >>> 1 & 0x55555555);
     t0 = (t0 & 0x33333333) + ((t0 & 0xcccccccc) >>> 2);
@@ -471,13 +496,47 @@ Othello.prototype.pop_count = function (x1, x0) {
     return t0 * 0x01010101 >>> 24;
 };
 
+Othello.prototype.play_ai2 = function () {
+    const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
+    this.hand = 0;
+    let str;
+    if(cnt >= 51) {
+        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], -114514, 114514, 0);
+        if(pos[0] < 0) {
+            str = "黒が " + (32 - pos[0] / 2) + " 個とりそう... 負けた＞＜" + " (" + this.hand + "手読んだよ)";
+        } else if(pos[0] == 0) {
+            str = "おーひきわけー"  + " (" + this.hand + "手読んだよ)";
+        } else {
+            str = "白が " + (32 + pos[0] / 2) + " 個とりそう... かった!!"  + " (" + this.hand + "手読んだよ)";
+        }
+
+        return [pos[1], str];
+    } else {
+        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514, 0);
+
+        if(pos[0] >= 100) {
+            str = "かったぜ"   + " (" + this.hand + "手読んだよ)";
+        } else if(pos[0] >= 50) {
+            str = "勝てそうかな??"   + " (" + this.hand + "手読んだよ)";
+        } else if(pos[0] >= -10) {
+            if(cnt <= 15) str = "まだ序盤だね"   + " (" + this.hand + "手読んだよ)";
+            else if(cnt <= 30) str = "中盤かな"   + " (" + this.hand + "手読んだよ)";
+            else if(cnt <= 40) str = "！？"   + " (" + this.hand + "手読んだよ)";
+        } else if(pos[0] >= -50) {
+            str = "!?"   + " (" + this.hand + "手読んだよ)";
+        } else {
+            str = "まけた><" + " (" + this.hand + "手読んだよ)";
+        }
+        return [pos[1], str];
+    }
+}
+
+
 Othello.prototype.play_ai = function () {
     const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
-
     this.hand = 0;
     if(cnt >= 51) {
         const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], -114514, 114514, 0);
-
         if(pos[0] < 0) {
             this.cpumessage.text("黒が " + (32 - pos[0] / 2) + " 個とりそう... 負けた＞＜" + " (" + this.hand + "手読んだよ)");
         } else if(pos[0] == 0) {
@@ -485,10 +544,7 @@ Othello.prototype.play_ai = function () {
         } else {
             this.cpumessage.text("白が " + (32 + pos[0] / 2) + " 個とりそう... かった!!"  + " (" + this.hand + "手読んだよ)" );
         }
-
         this.touch(pos[1] % 8, pos[1] / 8 | 0);
-
-
     } else {
         const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514, 0);
 

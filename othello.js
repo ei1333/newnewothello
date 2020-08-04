@@ -584,7 +584,7 @@ Othello.prototype.evalute = function (user, enemy) {
             else if ((enemy[i] >>> j) & 1) value -= evaluateTable[i][j];
         }
     }
-    return value;
+    return value + Math.random();
 };
 
 Othello.prototype.nega_max_search2 = function (user, enemy, alpha, beta, pass) {

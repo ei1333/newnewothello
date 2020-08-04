@@ -474,7 +474,7 @@ Othello.prototype.pop_count = function (x1, x0) {
 Othello.prototype.play_ai = function () {
     const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
     if(cnt >= 51) {
-        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], 15, -114514, 114514);
+        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], 15, -114514, 114514, 0);
 
         if(-pos[0] >= 33) {
             this.cpumessage.text("黒が " + (-pos[0]) + " 個とりそう... 負けた＞＜");
@@ -488,7 +488,7 @@ Othello.prototype.play_ai = function () {
 
 
     } else {
-        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514);
+        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514, 0);
 
         if(pos[0] >= 100) {
             this.cpumessage.text("かったぜ");
@@ -529,10 +529,7 @@ Othello.prototype.evalute = function (user, enemy) {
     return value;
 };
 
-Othello.prototype.nega_max_search2 = function (user, enemy, depth, alpha, beta) {
-    if (depth === 0) {
-        return [this.pop_count(user[0], user[1]), null, null];
-    }
+Othello.prototype.nega_max_search2 = function (user, enemy, alpha, beta, pass) {
 
     const mob = this.make_mobility(user, enemy);
     let think = [];
@@ -545,8 +542,12 @@ Othello.prototype.nega_max_search2 = function (user, enemy, depth, alpha, beta) 
     }
 
     if (think.length === 0) {
-        const ret = this.nega_max_search2(enemy, user, depth - 1, -beta, -alpha);
-        return [-ret[0], null];
+        if(pass >= 2) {
+            return [this.pop_count(user[0], user[1]), null];
+        } else {
+            const ret = this.nega_max_search2(enemy, user, -beta, -alpha, pass + 1);
+            return [-ret[0], null];
+        }
     }
 
     let best = alpha, best_idx = -1;
@@ -554,7 +555,7 @@ Othello.prototype.nega_max_search2 = function (user, enemy, depth, alpha, beta) 
         let nxt_user = [user[0], user[1]];
         let nxt_enemy = [enemy[0], enemy[1]];
         this.cell_put(nxt_user, nxt_enemy, think[i]);
-        const ret = -(this.nega_max_search2(nxt_enemy, nxt_user, depth - 1, -beta, -Math.max(alpha, best))[0]);
+        const ret = -(this.nega_max_search2(nxt_enemy, nxt_user, -beta, -Math.max(alpha, best), 0)[0]);
         if(best < ret || best_idx === -1) {
             best = ret;
             best_idx = think[i];
@@ -568,9 +569,24 @@ Othello.prototype.nega_max_search2 = function (user, enemy, depth, alpha, beta) 
 };
 
 
-Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta) {
+Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta, pass) {
     if (depth === 0) {
-        return [this.evalute(user, enemy), null, null];
+        if(pass === 0) {
+            return [this.evalute(user, enemy), null];
+        } else if(pass === 1) {
+            const mob = this.make_mobility(user, enemy);
+            if(mob[0] !== 0 || mob[1] !== 0) {
+                return [this.evalute(user, enemy), null];
+            } else {
+                const sa = this.pop_count(user[0], user[1]) - this.pop_count(enemy[0], enemy[1]);
+                if(sa > 0) return [114514, null];
+                else return [-114514, null];
+            }
+        } else {
+            const sa = this.pop_count(user[0], user[1]) - this.pop_count(enemy[0], enemy[1]);
+            if(sa > 0) return [114514, null];
+            else return [-114514, null];
+        }
     }
 
     const mob = this.make_mobility(user, enemy);
@@ -584,8 +600,14 @@ Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta) {
     }
 
     if (think.length === 0) {
-        const ret = this.nega_max_search(enemy, user, depth - 1, -beta, -alpha);
-        return [-ret[0], null];
+        if(pass >= 2) {
+            const sa = this.pop_count(user[0], user[1]) - this.pop_count(enemy[0], enemy[1]);
+            if(sa > 0) return [114514, null];
+            else return [-114514, null];
+        } else {
+            const ret = this.nega_max_search(enemy, user, depth - 1, -beta, -alpha, pass + 1);
+            return [-ret[0], null];
+        }
     }
 
     let best = alpha, best_idx = -1;
@@ -593,7 +615,7 @@ Othello.prototype.nega_max_search = function (user, enemy, depth, alpha, beta) {
         let nxt_user = [user[0], user[1]];
         let nxt_enemy = [enemy[0], enemy[1]];
         this.cell_put(nxt_user, nxt_enemy, think[i]);
-        const ret = -(this.nega_max_search(nxt_enemy, nxt_user, depth - 1, -beta, -Math.max(alpha, best))[0]);
+        const ret = -(this.nega_max_search(nxt_enemy, nxt_user, depth - 1, -beta, -Math.max(alpha, best), 0)[0]);
         if(best < ret || best_idx === -1) {
             best = ret;
             best_idx = think[i];

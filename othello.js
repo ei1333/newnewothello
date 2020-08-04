@@ -431,7 +431,7 @@ Othello.prototype.change_turn = function () {
         } else {
             this.user ^= 1;
             mob = this.make_mobility(this.board[this.user], this.board[1 ^ this.user]);
-            if (mob[0] > 0 || mob[1] > 0) {
+            if (mob[0] !== 0 || mob[1] !== 0) {
                 this.paint();
                 const self = this;
                 setTimeout(function () {

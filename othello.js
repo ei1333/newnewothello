@@ -503,7 +503,7 @@ Othello.prototype.play_ai = function () {
         } else if(pos[0] >= -50) {
             this.cpumessage.text("!?"   + " (" + this.hand + "手読んだよ)" );
         } else {
-            this.cpumessage.text("まけた><"   + " (" + this.hand + "手読んだよ)" );
+            this.cpumessage.text("負けた＞＜"   + " (" + this.hand + "手読んだよ)" );
         }
 
         this.touch(pos[1] % 8, pos[1] / 8 | 0);

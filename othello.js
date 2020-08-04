@@ -512,7 +512,7 @@ Othello.prototype.play_ai2 = function () {
 
         return [pos[1], str];
     } else {
-        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514, 0);
+        const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 7, -114514, 114514, 0);
 
         if(pos[0] >= 100) {
             str = "かったぜ"   + " (" + this.hand + "手読んだよ)";

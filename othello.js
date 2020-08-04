@@ -305,7 +305,7 @@ Othello.prototype.flip_bottom = function (p, o, bit) {
 
     // 左
     let d0 = 0x000000fe * bit;
-    t0 = (o0 | ~d0) + 1 & d0 & p0;
+    t0 = (mo0 | ~d0) + 1 & d0 & p0;
     r0 |= t0 - ((t0 | -t0) >>> 31) & d0;
 
     // 右下
@@ -338,12 +338,12 @@ Othello.prototype.flip_top = function (p, o, bit) {
 
     // 左
     let d1 = 0x000000fe * bit;
-    t1 = (o1 | ~d1) + 1 & d1 & p1;
+    t1 = (mo1 | ~d1) + 1 & d1 & p1;
     r1 |= t1 - ((t1 | -t1) >>> 31) & d1;
 
     // 左上
     d1 = 0x08040200 * bit;
-    t1 = (o1 | ~d1) + 1 & d1 & p1;
+    t1 = (mo1 | ~d1) + 1 & d1 & p1;
     r1 |= t1 - ((t1 | -t1) >>> 31) & d1;
 
     // 上
@@ -353,7 +353,7 @@ Othello.prototype.flip_top = function (p, o, bit) {
 
     // 右上
     d1 = 0x00204080 * bit;
-    t1 = (o1 | ~d1) + 1 & d1 & p1;
+    t1 = (mo1 | ~d1) + 1 & d1 & p1;
     r1 |= t1 - ((t1 | -t1) >>> 31) & d1;
 
     // 右

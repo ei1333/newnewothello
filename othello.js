@@ -474,7 +474,7 @@ Othello.prototype.pop_count = function (x1, x0) {
 Othello.prototype.play_ai = function () {
     const cnt = this.pop_count(this.board[0][0], this.board[0][1]) + this.pop_count(this.board[1][0], this.board[1][1]);
     if(cnt >= 51) {
-        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], 15, -114514, 114514, 0);
+        const pos = this.nega_max_search2(this.board[this.user], this.board[1 ^ this.user], -114514, 114514, 0);
 
         if(-pos[0] >= 33) {
             this.cpumessage.text("黒が " + (-pos[0]) + " 個とりそう... 負けた＞＜");

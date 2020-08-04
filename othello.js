@@ -470,7 +470,7 @@ Othello.prototype.pop_count = function (x1, x0) {
 };
 
 Othello.prototype.play_ai = function () {
-    const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 7, -114514, 114514);
+    const pos = this.nega_max_search(this.board[this.user], this.board[1 ^ this.user], 8, -114514, 114514);
     this.touch(pos[1] % 8, pos[1] / 8 | 0);
 };
 
